@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>赛博对决</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    overflow: hidden;
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #d7f4ff;
+    background: #060814;
+  }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 40% 52% at 11% 46%, rgba(0, 220, 255, 0.22), transparent 68%),
+      radial-gradient(ellipse 40% 52% at 89% 46%, rgba(255, 30, 64, 0.2), transparent 68%),
+      radial-gradient(ellipse 34% 42% at 50% 40%, rgba(148, 72, 255, 0.2), transparent 70%),
+      linear-gradient(180deg, #080a16 0%, #060814 42%, #070910 100%);
+  }
+
+  .backgrid {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(110, 150, 170, 0.16) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(110, 150, 170, 0.16) 1px, transparent 1px);
+    background-size: 42px 42px;
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 34%, transparent 50%);
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 34%, transparent 50%);
+  }
+
+  .floor-wrap {
+    position: absolute;
+    left: -18%;
+    right: -18%;
+    top: 40%;
+    bottom: 68px;
+    z-index: 1;
+    perspective: 460px;
+    perspective-origin: 50% 0%;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .floor {
+    position: absolute;
+    left: -10%;
+    right: -10%;
+    top: 0;
+    height: 145%;
+    transform-origin: center top;
+    transform: rotateX(68deg);
+    background-color: rgba(36, 64, 86, 0.48);
+    background-image:
+      linear-gradient(rgba(150, 210, 225, 0.28) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(150, 210, 225, 0.28) 1px, transparent 1px);
+    background-size: 72px 72px;
+    background-position: center top;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 78%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 78%, transparent 100%);
+  }
+
+  .horizon {
+    position: absolute;
+    left: 6%;
+    right: 6%;
+    top: 40%;
+    height: 2px;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.45), rgba(176, 110, 255, 0.7), rgba(255, 50, 80, 0.45), transparent);
+    box-shadow: 0 0 16px rgba(150, 90, 255, 0.55);
+  }
+
+  .stage::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.16) 0 1px,
+      transparent 1px 4px
+    );
+    opacity: 0.28;
+  }
+  .stage::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 46%, transparent 56%, rgba(0, 0, 0, 0.48) 100%);
+  }
+
+  .topbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 62px;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 0 32px;
+    background: linear-gradient(180deg, rgba(4, 6, 14, 0.82), transparent);
+    border-bottom: 1px solid rgba(130, 200, 230, 0.14);
+  }
+  h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 650;
+    letter-spacing: 0.52em;
+    padding-left: 0.52em;
+    background: linear-gradient(90deg, #8ef6ff 0%, #e2d4ff 48%, #ff9aab 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .count {
+    font-size: 14px;
+    letter-spacing: 0.14em;
+  }
+  .count b {
+    display: inline-block;
+    min-width: 1.2em;
+    margin-left: 8px;
+    font-size: 22px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .count.k { color: #9af7ff; text-shadow: 0 0 10px rgba(0, 220, 255, 0.55); }
+  .count.a { color: #ff9aaa; text-shadow: 0 0 10px rgba(255, 40, 80, 0.5); text-align: right; }
+  .stage.prep .count.a { padding-right: 138px; }
+
+  #start-battle {
+    position: absolute;
+    z-index: 6;
+    top: 13px;
+    right: 22px;
+    height: 36px;
+    padding: 0 16px 0 20px;
+    border: 1px solid rgba(170, 255, 255, 0.8);
+    border-radius: 999px;
+    background: rgba(0, 36, 48, 0.78);
+    color: #f3ffff;
+    font: inherit;
+    font-size: 14px;
+    letter-spacing: 0.32em;
+    cursor: pointer;
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.65);
+    animation: btn-breathe 2.4s ease-in-out infinite;
+  }
+  #start-battle:hover { background: rgba(0, 255, 255, 0.16); }
+  #start-battle:focus-visible { outline: 2px solid #9ff; outline-offset: 3px; }
+  #start-battle[hidden] { display: none !important; }
+
+  .stage.prep .field { bottom: 248px; }
+  .field {
+    position: absolute;
+    z-index: 2;
+    left: 0;
+    right: 0;
+    top: 62px;
+    bottom: 76px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 clamp(12px, 3vw, 48px) 22px;
+  }
+  .side {
+    display: flex;
+    align-items: flex-end;
+    gap: clamp(6px, 1.1vw, 22px);
+  }
+
+  .field::before {
+    content: "";
+    position: absolute;
+    left: 4%;
+    right: 4%;
+    bottom: 6px;
+    height: 84px;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(150, 190, 210, 0.42), transparent 70%);
+  }
+  .side { position: relative; z-index: 1; }
+  .drop-slot {
+    position: relative;
+    width: clamp(100px, 12vw, 148px);
+    min-height: 236px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .drop-slot::before {
+    content: "";
+    position: absolute;
+    inset: 28px 6px 10px;
+    border: 1px dashed rgba(150, 230, 255, 0.38);
+    background-image:
+      linear-gradient(rgba(140, 220, 255, 0.14) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(140, 220, 255, 0.14) 1px, transparent 1px);
+    background-size: 18px 18px;
+    background-position: center bottom;
+    pointer-events: none;
+    clip-path: polygon(12% 0, 100% 0, 88% 100%, 0 100%);
+  }
+  .drop-slot:not(.filled)::after {
+    content: "上阵";
+    position: absolute;
+    top: 46%;
+    letter-spacing: 0.42em;
+    font-size: 12px;
+    color: rgba(180, 235, 255, 0.42);
+    pointer-events: none;
+  }
+  .drop-slot.hot::before {
+    border-color: rgba(120, 255, 255, 0.95);
+    box-shadow: inset 0 0 22px rgba(0, 255, 255, 0.28), 0 0 16px rgba(0, 255, 255, 0.25);
+  }
+  .drop-slot.filled::before,
+  .drop-slot.filled::after { opacity: 0; }
+  .drop-slot .unit { width: 100%; }
+  .ground-ring {
+    position: absolute;
+    z-index: 2;
+    left: 4%;
+    right: 4%;
+    bottom: 4px;
+    height: 26px;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    border: 2px solid rgba(160, 255, 255, 0.95);
+    background: radial-gradient(ellipse at center, rgba(0, 255, 255, 0.5), transparent 68%);
+    box-shadow: 0 0 16px rgba(0, 245, 255, 0.85), inset 0 0 10px rgba(0, 245, 255, 0.4);
+    transition: opacity 0.15s linear, transform 0.15s linear;
+  }
+  .drop-slot.hot .ground-ring { opacity: 0.72; transform: scale(0.86); }
+  .drop-slot.placed .ground-ring { animation: ring-flare 0.5s ease-out forwards; }
+  .unit.just-placed {
+    animation: snap-in 0.38s cubic-bezier(0.15, 0.9, 0.25, 1.2);
+    transform-origin: center bottom;
+  }
+  .unit {
+    position: relative;
+    width: clamp(100px, 12vw, 148px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 16px;
+  }
+  .name {
+    position: relative;
+    z-index: 4;
+    margin-bottom: 4px;
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: 0.16em;
+    line-height: 1;
+  }
+  .knight .name { color: #d8ffff; text-shadow: 0 0 8px rgba(0, 230, 255, 0.75); }
+  .assassin .name { color: #ffd0d8; text-shadow: 0 0 8px rgba(255, 40, 80, 0.7); }
+  .hp {
+    position: relative;
+    z-index: 4;
+    width: 92%;
+    height: 13px;
+    margin-bottom: 7px;
+    padding: 1.5px;
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  }
+  .knight .hp {
+    background: linear-gradient(90deg, rgba(140, 255, 255, 0.2), #f4ffff 14%, #67e9ff 50%, #f4ffff 86%, rgba(140, 255, 255, 0.2));
+    filter: drop-shadow(0 0 5px rgba(0, 220, 255, 0.62));
+  }
+  .assassin .hp {
+    background: linear-gradient(90deg, rgba(255, 150, 170, 0.2), #fff4f6 14%, #ff8ea2 50%, #fff4f6 86%, rgba(255, 150, 170, 0.2));
+    filter: drop-shadow(0 0 5px rgba(255, 48, 80, 0.55));
+  }
+  .hp-track {
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+    background: rgba(4, 8, 16, 0.94);
+    clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  }
+  .hp-ghost,
+  .hp-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+  }
+  .hp-ghost {
+    z-index: 1;
+    background: linear-gradient(180deg, #ffffff, #e7fbff);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+    transition: width 0.78s cubic-bezier(0.16, 0.7, 0.2, 1) 0.14s;
+  }
+  .hp-fill {
+    z-index: 2;
+    transition: width 0.12s linear;
+  }
+  .knight .hp-fill {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.72), transparent 46%),
+      linear-gradient(90deg, #0b6280 0%, #3ad4f0 64%, #f3ffff 100%);
+    box-shadow: 0 0 8px rgba(70, 240, 255, 0.8);
+  }
+  .assassin .hp-fill {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.62), transparent 46%),
+      linear-gradient(90deg, #7a1230 0%, #ff4d6d 64%, #ffe8ee 100%);
+    box-shadow: 0 0 8px rgba(255, 70, 100, 0.75);
+  }
+
+  .sprite {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    aspect-ratio: 120 / 180;
+    animation: breathe 2.6s ease-in-out infinite;
+    animation-delay: var(--d, 0s);
+  }
+  .sprite svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .knight .sprite svg {
+    filter:
+      drop-shadow(0 0 2px rgba(214, 255, 255, 0.95))
+      drop-shadow(0 0 8px rgba(0, 190, 255, 0.7));
+  }
+  .assassin .sprite svg {
+    filter:
+      drop-shadow(0 0 2px rgba(255, 206, 214, 0.95))
+      drop-shadow(0 0 8px rgba(255, 32, 70, 0.68));
+  }
+  .sprite::after {
+    content: "";
+    position: absolute;
+    inset: 6% 12%;
+    border-radius: 40%;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+  .unit.hit .sprite::after { animation: hitflash 0.22s ease-out; }
+
+  .shadow {
+    position: absolute;
+    z-index: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 88%;
+    height: 20px;
+    margin: 0 auto;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.62) 42%, rgba(0, 0, 0, 0) 72%);
+    animation: shadow-breathe 2.6s ease-in-out infinite;
+    animation-delay: var(--d, 0s);
+    transform-origin: center center;
+  }
+
+  .unit.low .name,
+  .unit.low .hp { transform: translateY(28px); }
+
+  .unit.knight.striking { animation: strike-right 0.56s linear; z-index: 3; }
+  .unit.assassin.striking { animation: strike-left 0.56s linear; z-index: 3; }
+
+  .stage.shaking { animation: screen-shake 0.26s linear; }
+  .stage.shaking-crit { animation: screen-shake-crit 0.32s linear; }
+
+  .particle {
+    position: absolute;
+    z-index: 8;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    pointer-events: none;
+    background: currentColor;
+    box-shadow: 0 0 6px currentColor, 0 0 14px currentColor;
+    animation: spark 0.56s ease-out forwards;
+  }
+  .particle.streak {
+    width: 13px;
+    height: 2px;
+    border-radius: 2px;
+  }
+
+  .unit.dead .sprite { animation: none; transform: translateY(6px); }
+  .unit.dead .sprite svg {
+    filter: grayscale(1) brightness(0.38);
+    opacity: 0.28;
+    transition: filter 0.45s ease, opacity 0.6s ease;
+  }
+  .unit.dead .shadow {
+    animation: none;
+    opacity: 0.1;
+    transform: scale(0.5, 0.34);
+  }
+  .unit.dead .name,
+  .unit.dead .hp { opacity: 0.32; transition: opacity 0.5s ease; }
+
+  .float {
+    position: absolute;
+    z-index: 9;
+    left: 50%;
+    top: -18px;
+    width: max-content;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    pointer-events: none;
+    animation: dmg-rise 0.86s ease-out forwards;
+  }
+  .float.from-k { color: #f3ffff; text-shadow: 0 0 2px #fff, 0 0 10px #0ff; }
+  .float.from-a { color: #fff1f4; text-shadow: 0 0 2px #fff, 0 0 10px #f36; }
+  .float.crit {
+    font-size: 26px;
+    color: #ffe08a;
+    text-shadow: 0 0 2px #fff, 0 0 12px #ffb020, 0 0 22px #ff8a00;
+    animation-name: dmg-crit;
+    animation-duration: 0.96s;
+  }
+
+  .bottombar {
+    position: absolute;
+    z-index: 5;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 76px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 28px 10px;
+    background: linear-gradient(180deg, rgba(5, 8, 16, 0.2), rgba(5, 8, 16, 0.92) 42%);
+    border-top: 1px solid rgba(90, 200, 220, 0.2);
+  }
+  .log-label {
+    flex: none;
+    font-size: 12px;
+    letter-spacing: 0.32em;
+    color: rgba(170, 225, 245, 0.72);
+  }
+  #log {
+    flex: 1;
+    height: 56px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    color: rgba(220, 238, 248, 0.9);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 255, 255, 0.28) transparent;
+  }
+  #log p { margin: 0; }
+  #log .k { color: #8ef6ff; }
+  #log .a { color: #ff8b9c; }
+  #log .sys { color: rgba(190, 190, 210, 0.78); }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(3, 5, 12, 0.58);
+  }
+  .overlay[hidden] { display: none !important; }
+  .panel {
+    min-width: 300px;
+    padding: 40px 48px 34px;
+    text-align: center;
+    background: rgba(8, 12, 22, 0.9);
+    border: 1px solid rgba(180, 220, 255, 0.38);
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.55),
+      0 0 42px rgba(110, 70, 190, 0.38),
+      inset 0 0 28px rgba(0, 210, 255, 0.05);
+    animation: rise 0.35s ease-out;
+  }
+  #result-title {
+    margin: 0 0 26px;
+    font-size: 34px;
+    font-weight: 750;
+    letter-spacing: 0.16em;
+  }
+  .win-k { color: #c6fdff; text-shadow: 0 0 16px rgba(0, 230, 255, 0.8); }
+  .win-a { color: #ffc0c8; text-shadow: 0 0 16px rgba(255, 40, 70, 0.75); }
+  #rematch {
+    appearance: none;
+    cursor: pointer;
+    color: #e9ffff;
+    background: rgba(0, 48, 58, 0.45);
+    border: 1px solid rgba(130, 255, 255, 0.72);
+    font: inherit;
+    font-size: 16px;
+    letter-spacing: 0.46em;
+    padding: 10px 20px 10px 32px;
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.55);
+  }
+  #rematch:hover {
+    background: rgba(0, 255, 255, 0.14);
+    box-shadow: 0 0 18px rgba(0, 255, 255, 0.35);
+  }
+  #rematch:focus-visible {
+    outline: 2px solid #9ff;
+    outline-offset: 3px;
+  }
+
+  @keyframes breathe {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  @keyframes shadow-breathe {
+    0%, 100% { transform: scale(1, 1); opacity: 0.92; }
+    50% { transform: scale(0.66, 0.45); opacity: 0.18; }
+  }
+  @keyframes strike-right {
+    0%   { transform: translate3d(0, 0, 0); }
+    26%  { transform: translate3d(-20px, 1px, 0); }
+    42%  { transform: translate3d(56px, -3px, 0); }
+    54%  { transform: translate3d(40px, 0, 0); }
+    78%  { transform: translate3d(-8px, 1px, 0); }
+    100% { transform: translate3d(0, 0, 0); }
+  }
+  @keyframes strike-left {
+    0%   { transform: translate3d(0, 0, 0); }
+    26%  { transform: translate3d(20px, 1px, 0); }
+    42%  { transform: translate3d(-56px, -3px, 0); }
+    54%  { transform: translate3d(-40px, 0, 0); }
+    78%  { transform: translate3d(8px, 1px, 0); }
+    100% { transform: translate3d(0, 0, 0); }
+  }
+  @keyframes hitflash {
+    0% { opacity: 0.92; }
+    100% { opacity: 0; }
+  }
+  @keyframes spark {
+    0% { opacity: 1; transform: translate(0, 0) scale(1); }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.25); }
+  }
+  @keyframes screen-shake {
+    0%, 100% { transform: translate(0, 0); }
+    15% { transform: translate(-2px, 1px); }
+    30% { transform: translate(2px, -1px); }
+    45% { transform: translate(-2px, -1px); }
+    60% { transform: translate(2px, 1px); }
+    75% { transform: translate(-1px, 1px); }
+  }
+  @keyframes screen-shake-crit {
+    0%, 100% { transform: translate(0, 0); }
+    15% { transform: translate(-4px, 2px); }
+    30% { transform: translate(4px, -2px); }
+    45% { transform: translate(-3px, -2px); }
+    60% { transform: translate(3px, 2px); }
+    75% { transform: translate(-2px, 1px); }
+  }
+  @keyframes dmg-rise {
+    0% { opacity: 0; transform: translate(-50%, 8px) scale(0.55); }
+    30% { opacity: 1; transform: translate(-50%, -8px) scale(1.05); }
+    55% { opacity: 1; transform: translate(-50%, -24px) scale(1.28); }
+    100% { opacity: 0; transform: translate(-50%, -58px) scale(1.34); }
+  }
+  @keyframes dmg-crit {
+    0% { opacity: 0; transform: translate(-50%, 8px) scale(0.6); }
+    28% { opacity: 1; transform: translate(-50%, -10px) scale(1.2); }
+    52% { opacity: 1; transform: translate(-50%, -30px) scale(1.55); }
+    100% { opacity: 0; transform: translate(-50%, -72px) scale(1.62); }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes btn-breathe {
+    0%, 100% { box-shadow: 0 0 8px rgba(0, 255, 255, 0.35), inset 0 0 8px rgba(0, 255, 255, 0.12); }
+    50% { box-shadow: 0 0 18px rgba(0, 255, 255, 0.9), 0 0 36px rgba(150, 80, 255, 0.45), inset 0 0 14px rgba(0, 255, 255, 0.3); }
+  }
+  @keyframes snap-in {
+    0% { transform: scale(0.62); filter: brightness(1.85); }
+    55% { transform: scale(1.14); filter: brightness(1.2); }
+    100% { transform: scale(1); filter: brightness(1); }
+  }
+  @keyframes ring-flare {
+    0% { opacity: 0; transform: scale(0.35); }
+    42% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0.82; transform: scale(1); }
+  }
+  @keyframes epic-flow {
+    0% { background-position: 130% 0; }
+    100% { background-position: -130% 0; }
+  }
+  @keyframes nope {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-7px); }
+    75% { transform: translateX(7px); }
+  }
+
+  .stage.prep .bottombar { visibility: hidden; }
+  .shop {
+    position: absolute;
+    z-index: 8;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    width: min(560px, calc(100% - 28px));
+    padding: 12px 14px 10px;
+    border-radius: 18px;
+    background: rgba(8, 12, 22, 0.48);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    backdrop-filter: blur(18px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.34),
+      0 16px 48px rgba(0, 0, 0, 0.42);
+  }
+  .shop[hidden] { display: none !important; }
+  .shop-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 0 4px;
+  }
+  .shop-title {
+    font-size: 14px;
+    letter-spacing: 0.42em;
+    color: #e7fbff;
+    text-shadow: 0 0 10px rgba(0, 230, 255, 0.45);
+  }
+  .credits { font-size: 13px; letter-spacing: 0.12em; color: rgba(210, 245, 255, 0.82); }
+  .credits b {
+    margin-left: 6px;
+    font-size: 18px;
+    color: #fff4c2;
+    text-shadow: 0 0 8px rgba(255, 210, 80, 0.65);
+  }
+  .shop-row { display: flex; justify-content: center; gap: 14px; }
+  .card-bay { width: 132px; min-height: 186px; }
+  .card-bay:empty::after {
+    content: "已上阵";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 186px;
+    border: 1px dashed rgba(255, 255, 255, 0.16);
+    border-radius: 14px;
+    color: rgba(200, 225, 235, 0.35);
+    letter-spacing: 0.28em;
+    font-size: 12px;
+  }
+  .card {
+    --px: 50;
+    --py: 28;
+    --edge: rgba(255, 255, 255, 0.92);
+    --glow: rgba(255, 255, 255, 0.4);
+    position: relative;
+    width: 132px;
+    height: 186px;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 8px 8px;
+    border-radius: 14px;
+    border: 1px solid var(--edge);
+    background: linear-gradient(180deg, rgba(22, 30, 44, 0.92), rgba(8, 10, 18, 0.94));
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.12);
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    overflow: hidden;
+  }
+  .card.rare {
+    --edge: rgba(80, 176, 255, 0.98);
+    --glow: rgba(60, 160, 255, 0.72);
+    box-shadow: 0 0 14px rgba(60, 150, 255, 0.35);
+  }
+  .card.epic {
+    --edge: rgba(198, 120, 255, 0.98);
+    --glow: rgba(180, 90, 255, 0.75);
+    box-shadow: 0 0 16px rgba(170, 80, 255, 0.42);
+  }
+  .card.floating {
+    position: fixed;
+    z-index: 60;
+    margin: 0;
+    cursor: grabbing;
+    pointer-events: none;
+  }
+  .card.nope { animation: nope 0.36s linear; }
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: radial-gradient(80px circle at calc(var(--px) * 1%) calc(var(--py) * 1%), #fff, var(--edge) 32%, transparent 62%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.16s linear;
+  }
+  .card:hover::before { opacity: 1; }
+  .card .holo {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.18s linear;
+    background:
+      radial-gradient(110px circle at calc(var(--px) * 1%) calc(var(--py) * 1%), rgba(255, 255, 255, 0.38), transparent 46%),
+      linear-gradient(118deg, transparent 28%, rgba(130, 230, 255, 0.16) 46%, rgba(255, 170, 255, 0.2) 54%, transparent 70%);
+    mix-blend-mode: screen;
+  }
+  .card:hover .holo { opacity: 1; }
+  .card:hover {
+    box-shadow:
+      calc((var(--px) - 50) * 0.32px) calc((var(--py) - 50) * 0.24px) 20px var(--glow),
+      0 12px 28px rgba(0, 0, 0, 0.38);
+  }
+  .card .shimmer {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    background: linear-gradient(112deg, transparent 30%, rgba(255, 255, 255, 0.05) 42%, rgba(236, 210, 255, 0.82) 50%, rgba(255, 255, 255, 0.05) 58%, transparent 70%);
+    background-size: 220% 100%;
+    mix-blend-mode: screen;
+    animation: epic-flow 2.4s linear infinite;
+  }
+  .card-top, .card-name { position: relative; z-index: 5; }
+  .card-top { display: flex; justify-content: space-between; font-size: 11px; letter-spacing: 0.12em; }
+  .card.common .card-top { color: #f4f7fb; }
+  .card.rare .card-top { color: #b9dcff; }
+  .card.epic .card-top { color: #ebccff; }
+  .card-art {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .card-art .sprite { width: 76px; }
+  .card-art .sprite svg { filter: drop-shadow(0 0 6px rgba(0, 210, 255, 0.7)); }
+  .card-name {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 650;
+    letter-spacing: 0.22em;
+    color: #eefcff;
+  }
+  .shop-hint {
+    margin: 8px 0 0;
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    color: rgba(190, 225, 240, 0.62);
+  }
+
+  @media (max-width: 860px) {
+    h1 { font-size: 16px; letter-spacing: 0.28em; padding-left: 0.28em; }
+    .count { font-size: 12px; letter-spacing: 0.06em; }
+    .topbar, .bottombar { padding-left: 12px; padding-right: 12px; }
+    #result-title { font-size: 26px; }
+    .card, .card-bay { width: 104px; }
+    .card, .card-bay:empty::after { height: 158px; }
+    .stage.prep .field { bottom: 214px; }
+    .stage.prep .count.a { padding-right: 0; }
+    #start-battle { top: 64px; letter-spacing: 0.14em; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<div class="stage prep">
+  <div class="backgrid"></div>
+  <div class="floor-wrap"><div class="floor"></div></div>
+  <div class="horizon"></div>
+
+  <header class="topbar">
+    <div class="count k">机械骑士存活 <b id="count-k">0</b></div>
+    <h1>赛博对决</h1>
+    <div class="count a">虚空刺客存活 <b id="count-a">3</b></div>
+  </header>
+  <button type="button" id="start-battle">开始战斗</button>
+
+  <main class="field">
+    <div class="side player-side">
+      <div class="unit knight" style="--d:0s" data-id="k1" data-name="骑士 I" data-max="160" data-atk="18" data-interval="1080" data-cd="180">
+        <div class="name">骑士 I</div>
+        <div class="hp">
+          <div class="hp-track">
+            <i class="hp-ghost"></i>
+            <i class="hp-fill"></i>
+          </div>
+        </div>
+        <div class="sprite">
+          <svg viewBox="0 0 120 180" role="img" aria-label="骑士 I">
+            <defs>
+              <linearGradient id="k1_armor" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#e7feff"/>
+                <stop offset="40%" stop-color="#3ec4e6"/>
+                <stop offset="100%" stop-color="#0a3046"/>
+              </linearGradient>
+              <linearGradient id="k1_edge" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="42%" stop-color="#8fe4f6"/>
+                <stop offset="100%" stop-color="#14506a"/>
+              </linearGradient>
+              <linearGradient id="k1_blade" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="46%" stop-color="#7dfff4"/>
+                <stop offset="100%" stop-color="#128eb4"/>
+              </linearGradient>
+            </defs>
+            <path d="M68 78 H86 L82 104 H64 Z" fill="url(#k1_edge)"/>
+            <path d="M34 80 L18 116 L30 122 L46 88 Z" fill="url(#k1_armor)"/>
+            <path d="M14 112 L32 120 L28 130 L12 122 Z" fill="url(#k1_edge)"/>
+            <path d="M40 118 L32 160 L48 162 L54 120 Z" fill="url(#k1_edge)"/>
+            <path d="M58 116 L66 158 L82 156 L72 116 Z" fill="url(#k1_armor)"/>
+            <path d="M28 156 L50 154 L54 172 L26 174 Z" fill="#071c2c"/>
+            <path d="M60 154 L86 150 L88 170 L58 172 Z" fill="#071c2c"/>
+            <path d="M32 162 H48" stroke="#9ff" stroke-width="1.2" opacity="0.8"/>
+            <path d="M64 160 H82" stroke="#9ff" stroke-width="1.2" opacity="0.8"/>
+            <path d="M36 66 C32 82 32 102 36 120 H76 C82 100 80 78 72 64 C58 52 44 54 36 66 Z" fill="url(#k1_armor)"/>
+            <path d="M46 80 H70 M44 92 H72 M42 104 H74 M58 78 V110" fill="none" stroke="#e7ffff" stroke-width="1.3" stroke-linecap="round"/>
+            <circle cx="58" cy="92" r="2.4" fill="#fff"/>
+            <circle cx="46" cy="80" r="1.3" fill="#dff"/>
+            <circle cx="72" cy="104" r="1.3" fill="#dff"/>
+            <path d="M34 114 H78 L76 124 H36 Z" fill="#0c3346"/>
+            <rect x="54" y="116" width="8" height="6" rx="1" fill="#d9ffff"/>
+            <path d="M22 62 C12 66 10 78 18 84 C30 90 42 78 40 68 C38 60 32 58 22 62 Z" fill="url(#k1_edge)"/>
+            <path d="M70 56 C88 50 102 60 102 74 C98 86 82 86 74 76 C66 66 64 58 70 56 Z" fill="url(#k1_edge)"/>
+            <circle cx="20" cy="72" r="1.7" fill="#eff"/>
+            <circle cx="94" cy="66" r="1.7" fill="#eff"/>
+            <path d="M66 74 L88 86 L80 98 L62 86 Z" fill="url(#k1_edge)"/>
+            <path d="M38 44 C38 22 46 12 58 12 C72 12 80 24 80 44 C80 58 70 66 58 66 C46 66 38 56 38 44 Z" fill="url(#k1_edge)"/>
+            <path d="M52 14 L58 2 L64 14 Z" fill="#cfffff"/>
+            <path d="M42 40 H74 L71 49 H45 Z" fill="#e9ffff"/>
+            <path d="M45 42.5 H70" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+            <ellipse cx="52" cy="30" rx="8" ry="4.5" fill="#fff" opacity="0.28"/>
+            <path d="M80 62 L118 46 L114 60 L82 76 Z" fill="url(#k1_blade)"/>
+            <path d="M86 66 L112 54" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
+            <path d="M74 58 H88 L86 80 H72 Z" fill="#f4ffff"/>
+          </svg>
+        </div>
+        <div class="shadow"></div>
+      </div>
+
+      <div class="unit knight" style="--d:-0.55s" data-id="k2" data-name="骑士 II" data-max="140" data-atk="23" data-interval="1360" data-cd="640">
+        <div class="name">骑士 II</div>
+        <div class="hp">
+          <div class="hp-track">
+            <i class="hp-ghost"></i>
+            <i class="hp-fill"></i>
+          </div>
+        </div>
+        <div class="sprite">
+          <svg viewBox="0 0 120 180" role="img" aria-label="骑士 II">
+            <defs>
+              <linearGradient id="k2_armor" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#e5fff8"/>
+                <stop offset="38%" stop-color="#2ec8c0"/>
+                <stop offset="100%" stop-color="#083e44"/>
+              </linearGradient>
+              <linearGradient id="k2_edge" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="44%" stop-color="#8ef3ea"/>
+                <stop offset="100%" stop-color="#0f4e56"/>
+              </linearGradient>
+              <linearGradient id="k2_blade" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="48%" stop-color="#86fff0"/>
+                <stop offset="100%" stop-color="#14a898"/>
+              </linearGradient>
+            </defs>
+            <path d="M22 86 L36 74 L42 88 L28 100 Z" fill="url(#k2_edge)"/>
+            <path d="M70 80 L86 90 L80 104 L64 94 Z" fill="url(#k2_edge)"/>
+            <path d="M34 120 L24 158 L40 162 L48 122 Z" fill="url(#k2_edge)"/>
+            <path d="M62 120 L70 158 L88 156 L76 118 Z" fill="url(#k2_armor)"/>
+            <path d="M20 156 L42 154 L46 172 L18 174 Z" fill="#06262c"/>
+            <path d="M66 154 L92 150 L94 170 L64 172 Z" fill="#06262c"/>
+            <path d="M24 162 H40" stroke="#9ff" stroke-width="1.2"/>
+            <path d="M70 160 H88" stroke="#9ff" stroke-width="1.2"/>
+            <path d="M40 70 C36 86 34 104 40 122 H74 C82 102 80 82 72 68 C60 56 48 58 40 70 Z" fill="url(#k2_armor)"/>
+            <path d="M52 84 L64 78 L70 90 L58 102 L46 96 Z" fill="none" stroke="#e9ffff" stroke-width="1.3"/>
+            <path d="M58 84 V108 M46 96 H70" fill="none" stroke="#e9ffff" stroke-width="1.15"/>
+            <circle cx="58" cy="96" r="2.3" fill="#fff"/>
+            <path d="M36 116 H78 L76 126 H38 Z" fill="#0a3a40"/>
+            <rect x="54" y="118" width="8" height="6" rx="1" fill="#d9fff8"/>
+            <path d="M26 64 C14 60 8 74 16 84 C28 90 40 78 38 68 C36 60 32 62 26 64 Z" fill="url(#k2_edge)"/>
+            <path d="M78 60 C96 56 106 68 102 80 C94 90 78 86 74 74 C72 64 74 60 78 60 Z" fill="url(#k2_edge)"/>
+            <path d="M30 78 L22 96 L32 100 L40 82 Z" fill="url(#k2_armor)"/>
+            <path d="M72 76 L84 92 L74 98 L64 80 Z" fill="url(#k2_armor)"/>
+            <path d="M40 46 C40 24 48 14 60 14 C74 14 82 26 82 46 C82 60 72 68 60 68 C48 68 40 58 40 46 Z" fill="url(#k2_edge)"/>
+            <path d="M44 30 L36 10" stroke="#d9fff8" stroke-width="2.4" stroke-linecap="round"/>
+            <circle cx="35" cy="9" r="2.4" fill="#fff"/>
+            <path d="M76 30 L86 10" stroke="#d9fff8" stroke-width="2.4" stroke-linecap="round"/>
+            <circle cx="87" cy="9" r="2.4" fill="#fff"/>
+            <path d="M46 42 H58 L56 49 H48 Z" fill="#e9ffff"/>
+            <path d="M64 42 H76 L74 49 H66 Z" fill="#e9ffff"/>
+            <path d="M48 44 H56 M66 44 H74" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
+            <ellipse cx="54" cy="32" rx="7" ry="4" fill="#fff" opacity="0.26"/>
+            <path d="M30 108 L86 46 L94 58 L40 118 Z" fill="url(#k2_blade)"/>
+            <path d="M38 104 L84 54" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M70 98 L118 86 L114 98 L70 112 Z" fill="url(#k2_blade)"/>
+            <path d="M76 102 L112 92" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="shadow"></div>
+      </div>
+
+      <div class="unit knight" style="--d:-1.15s" data-id="k3" data-name="骑士 III" data-max="198" data-atk="15" data-interval="1640" data-cd="1040">
+        <div class="name">骑士 III</div>
+        <div class="hp">
+          <div class="hp-track">
+            <i class="hp-ghost"></i>
+            <i class="hp-fill"></i>
+          </div>
+        </div>
+        <div class="sprite">
+          <svg viewBox="0 0 120 180" role="img" aria-label="骑士 III">
+            <defs>
+              <linearGradient id="k3_armor" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#e4f4ff"/>
+                <stop offset="40%" stop-color="#3a7ee0"/>
+                <stop offset="100%" stop-color="#102044"/>
+              </linearGradient>
+              <linearGradient id="k3_edge" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="42%" stop-color="#9ec6ff"/>
+                <stop offset="100%" stop-color="#1a3060"/>
+              </linearGradient>
+              <linearGradient id="k3_blade" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="50%" stop-color="#bcdcff"/>
+                <stop offset="100%" stop-color="#3a78d0"/>
+              </linearGradient>
+              <linearGradient id="k3_shield" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#f2f8ff"/>
+                <stop offset="36%" stop-color="#6aa6ee"/>
+                <stop offset="100%" stop-color="#17305c"/>
+              </linearGradient>
+            </defs>
+            <path d="M8 118 L22 104 L28 116 L14 130 Z" fill="url(#k3_blade)"/>
+            <path d="M12 120 L24 110" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>
+            <path d="M16 108 L26 100 L32 112 L22 122 Z" fill="url(#k3_edge)"/>
+            <path d="M30 122 L22 160 L38 164 L46 124 Z" fill="url(#k3_edge)"/>
+            <path d="M50 120 L58 158 L74 156 L64 118 Z" fill="url(#k3_armor)"/>
+            <path d="M18 158 L40 156 L42 172 L16 174 Z" fill="#0c1830"/>
+            <path d="M54 156 L78 152 L80 170 L52 172 Z" fill="#0c1830"/>
+            <path d="M22 164 H38" stroke="#cfe4ff" stroke-width="1.1"/>
+            <path d="M34 72 C30 90 28 108 34 124 H66 C72 104 70 84 62 70 C50 58 40 60 34 72 Z" fill="url(#k3_armor)"/>
+            <path d="M42 86 H60 M40 98 H62 M58 84 V112" fill="none" stroke="#e7f1ff" stroke-width="1.25" stroke-linecap="round"/>
+            <circle cx="50" cy="98" r="2.1" fill="#fff"/>
+            <path d="M30 116 H68 L66 126 H32 Z" fill="#12284a"/>
+            <rect x="46" y="118" width="8" height="6" rx="1" fill="#dceaff"/>
+            <path d="M20 66 C8 70 8 84 18 88 C30 90 38 78 36 68 C34 60 28 60 20 66 Z" fill="url(#k3_edge)"/>
+            <path d="M24 80 L14 108 L26 112 L36 84 Z" fill="url(#k3_armor)"/>
+            <path d="M36 46 C36 24 44 14 54 14 C68 14 76 26 76 46 C76 60 66 68 54 68 C42 68 36 58 36 46 Z" fill="url(#k3_edge)"/>
+            <path d="M54 14 L58 4 L62 16" fill="none" stroke="#dceaff" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M42 40 H66 L64 46 H44 Z" fill="#eaf3ff"/>
+            <path d="M54 36 V50" stroke="#dceaff" stroke-width="2" stroke-linecap="round"/>
+            <path d="M44 42 H64" stroke="#fff" stroke-width="1.2"/>
+            <ellipse cx="48" cy="30" rx="7" ry="4" fill="#fff" opacity="0.25"/>
+            <path d="M62 40 H112 L116 108 L88 146 L64 112 Z" fill="url(#k3_shield)"/>
+            <path d="M70 50 H106 L110 106 L88 136 L68 106 Z" fill="none" stroke="#eaf6ff" stroke-width="2"/>
+            <path d="M88 70 L100 90 L88 110 L76 90 Z" fill="none" stroke="#f4fbff" stroke-width="1.6"/>
+            <circle cx="88" cy="90" r="3" fill="#fff"/>
+            <path d="M78 90 H98 M88 78 V102" stroke="#dff" stroke-width="1" opacity="0.85"/>
+          </svg>
+        </div>
+        <div class="shadow"></div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="unit assassin" style="--d:-0.3s" data-name="刺客 I" data-max="128" data-atk="26" data-interval="970" data-cd="260">
+        <div class="name">刺客 I</div>
+        <div class="hp">
+          <div class="hp-track">
+            <i class="hp-ghost"></i>
+            <i class="hp-fill"></i>
+          </div>
+        </div>
+        <div class="sprite">
+          <svg viewBox="0 0 120 180" role="img" aria-label="刺客 I">
+            <defs>
+              <linearGradient id="a1_cloth" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffd6de"/>
+                <stop offset="40%" stop-color="#e02648"/>
+                <stop offset="100%" stop-color="#4a0a16"/>
+              </linearGradient>
+              <linearGradient id="a1_edge" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#fff5f6"/>
+                <stop offset="42%" stop-color="#ff8fa0"/>
+                <stop offset="100%" stop-color="#6a1428"/>
+              </linearGradient>
+              <linearGradient id="a1_blade" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="48%" stop-color="#ffb4c0"/>
+                <stop offset="100%" stop-color="#c01838"/>
+              </linearGradient>
+            </defs>
+            <path d="M78 58 C104 70 112 112 96 168 L78 150 L86 172 L66 146 L70 168 L50 140 C58 100 62 78 70 62 Z" fill="url(#a1_cloth)"/>
+            <path d="M80 78 Q96 110 88 150" fill="none" stroke="#6e1024" stroke-width="2.2" opacity="0.7"/>
+            <path d="M70 148 L86 166 L96 160 L78 140 Z" fill="#2a060e"/>
+            <path d="M28 150 L18 168 L36 172 L42 154 Z" fill="#2a060e"/>
+            <path d="M36 118 Q24 136 30 154 L46 150 Q48 132 44 118 Z" fill="url(#a1_edge)"/>
+            <path d="M58 116 Q70 132 74 150 L60 146 Q56 130 54 116 Z" fill="url(#a1_cloth)"/>
+            <path d="M40 78 Q28 100 36 122 L56 116 Q60 96 54 76 Z" fill="url(#a1_cloth)"/>
+            <path d="M34 96 L16 112 L24 122 L42 106 Z" fill="url(#a1_edge)"/>
+            <path d="M4 100 L30 90 L36 100 L12 112 Z" fill="url(#a1_blade)"/>
+            <path d="M8 102 L30 94" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
+            <path d="M30 88 L40 104 L32 110 L22 94 Z" fill="#3a0a14"/>
+            <path d="M62 70 L92 52 L98 62 L70 82 Z" fill="url(#a1_blade)"/>
+            <path d="M68 74 L92 58" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>
+            <path d="M58 72 L70 64 L76 76 L64 84 Z" fill="#3a0a14"/>
+            <path d="M34 70 C32 46 46 34 58 38 C74 30 86 48 80 66 C76 80 62 86 50 80 C38 82 34 78 34 70 Z" fill="url(#a1_edge)"/>
+            <path d="M42 62 Q54 78 70 60 Q58 52 42 62 Z" fill="#1a060c" opacity="0.72"/>
+            <path d="M44 58 H56 L54 64 H46 Z" fill="#ffd0d8"/>
+            <path d="M60 56 H72 L70 62 H62 Z" fill="#ffd0d8"/>
+            <path d="M46 59 H54 M62 57.5 H70" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M52 40 L58 28 L66 42" fill="#ffd0d8"/>
+            <path d="M2 102 L44 88 L48 96 L8 112 Z" fill="#fff7f8"/>
+            <path d="M10 104 L40 92" stroke="#ffd5de" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M66 68 L98 50 L102 58 L72 76 Z" fill="#fff7f8"/>
+            <path d="M72 70 L96 54" stroke="#ffd5de" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="shadow"></div>
+      </div>
+
+      <div class="unit assassin" style="--d:-0.9s" data-name="刺客 II" data-max="156" data-atk="20" data-interval="1290" data-cd="820">
+        <div class="name">刺客 II</div>
+        <div class="hp">
+          <div class="hp-track">
+            <i class="hp-ghost"></i>
+            <i class="hp-fill"></i>
+          </div>
+        </div>
+        <div class="sprite">
+          <svg viewBox="0 0 120 180" role="img" aria-label="刺客 II">
+            <defs>
+              <linearGradient id="a2_cloth" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffd0dc"/>
+                <stop offset="42%" stop-color="#c01840"/>
+                <stop offset="100%" stop-color="#3a0612"/>
+              </linearGradient>
+              <linearGradient id="a2_edge" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#fff2f4"/>
+                <stop offset="40%" stop-color="#ff7d96"/>
+                <stop offset="100%" stop-color="#5c1024"/>
+              </linearGradient>
+              <linearGradient id="a2_blade" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="46%" stop-color="#ffc0ca"/>
+                <stop offset="100%" stop-color="#a81430"/>
+              </linearGradient>
+            </defs>
+            <path d="M70 56 C98 64 104 108 92 170 L74 156 L80 174 L62 150 L58 172 L40 148 C36 110 46 78 62 58 Z" fill="url(#a2_cloth)"/>
+            <path d="M66 80 Q58 120 64 158" fill="none" stroke="#5a1020" stroke-width="2"/>
+            <path d="M78 84 Q90 120 82 156" fill="none" stroke="#5a1020" stroke-width="2"/>
+            <path d="M46 124 L40 162 L54 166 L58 128 Z" fill="url(#a2_edge)"/>
+            <path d="M62 122 L70 160 L84 156 L74 120 Z" fill="url(#a2_cloth)"/>
+            <path d="M36 160 L56 158 L58 172 L34 174 Z" fill="#24060e"/>
+            <path d="M66 158 L86 154 L88 170 L64 172 Z" fill="#24060e"/>
+            <path d="M48 70 C46 92 48 112 52 126 H74 C80 108 78 86 70 68 C62 58 52 58 48 70 Z" fill="url(#a2_cloth)"/>
+            <path d="M44 86 L30 108 L40 114 L52 92 Z" fill="url(#a2_edge)"/>
+            <path d="M72 84 L90 70 L96 80 L78 96 Z" fill="url(#a2_edge)"/>
+            <path d="M42 36 C40 18 52 8 64 12 C80 8 90 26 86 44 C84 58 72 66 60 62 C48 66 42 52 42 36 Z" fill="url(#a2_edge)"/>
+            <path d="M48 46 Q62 64 78 46 Q64 38 48 46 Z" fill="#1a060c" opacity="0.75"/>
+            <path d="M50 44 H62 L60 50 H52 Z" fill="#ffd5de"/>
+            <path d="M66 44 H78 L76 50 H68 Z" fill="#ffd5de"/>
+            <path d="M52 46 H60 M68 46 H76" stroke="#fff" stroke-width="1.45" stroke-linecap="round"/>
+            <path d="M58 16 L64 4 L70 16 Z" fill="#ffd0da"/>
+            <path d="M30 64 L44 74 L70 132 L56 140 Z" fill="url(#a2_blade)"/>
+            <path d="M34 72 L64 128" stroke="#fff" stroke-width="1.35" stroke-linecap="round"/>
+            <path d="M86 66 L74 76 L46 132 L58 140 Z" fill="url(#a2_blade)"/>
+            <path d="M80 74 L54 128" stroke="#fff" stroke-width="1.35" stroke-linecap="round"/>
+            <path d="M28 60 L42 70 L36 80 L22 70 Z" fill="#3a0a14"/>
+            <path d="M90 60 L78 72 L84 82 L98 70 Z" fill="#3a0a14"/>
+          </svg>
+        </div>
+        <div class="shadow"></div>
+      </div>
+
+      <div class="unit assassin low" style="--d:-1.7s" data-name="刺客 III" data-max="118" data-atk="24" data-interval="1510" data-cd="120">
+        <div class="name">刺客 III</div>
+        <div class="hp">
+          <div class="hp-track">
+            <i class="hp-ghost"></i>
+            <i class="hp-fill"></i>
+          </div>
+        </div>
+        <div class="sprite">
+          <svg viewBox="0 0 120 180" role="img" aria-label="刺客 III">
+            <defs>
+              <linearGradient id="a3_cloth" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffd4ea"/>
+                <stop offset="40%" stop-color="#d01858"/>
+                <stop offset="100%" stop-color="#3c0a22"/>
+              </linearGradient>
+              <linearGradient id="a3_edge" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#fff1f6"/>
+                <stop offset="44%" stop-color="#ff86b0"/>
+                <stop offset="100%" stop-color="#6a1840"/>
+              </linearGradient>
+              <linearGradient id="a3_blade" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="50%" stop-color="#ffc0d8"/>
+                <stop offset="100%" stop-color="#c01858"/>
+              </linearGradient>
+            </defs>
+            <path d="M78 96 C104 104 108 132 96 162 L80 150 L88 170 L68 146 C70 124 72 108 74 98 Z" fill="url(#a3_cloth)"/>
+            <path d="M82 112 Q96 132 88 156" fill="none" stroke="#5c1030" stroke-width="2"/>
+            <path d="M86 146 L100 166 L86 170 L76 152 Z" fill="#2a0814"/>
+            <path d="M70 132 Q86 128 90 148 L78 152 Q72 140 68 132 Z" fill="url(#a3_cloth)"/>
+            <path d="M36 150 L24 170 L42 174 L48 156 Z" fill="#2a0814"/>
+            <path d="M40 124 Q28 140 34 156 L50 152 Q52 136 46 122 Z" fill="url(#a3_edge)"/>
+            <path d="M36 108 Q24 118 34 132 L54 126 Q58 114 48 106 Z" fill="url(#a3_cloth)"/>
+            <path d="M30 116 L8 128 L14 138 L36 126 Z" fill="url(#a3_blade)"/>
+            <path d="M12 130 L30 120" stroke="#fff" stroke-width="1.25" stroke-linecap="round"/>
+            <path d="M32 112 L44 124 L36 132 L24 120 Z" fill="#3a0a18"/>
+            <path d="M58 100 L86 78 L92 88 L64 112 Z" fill="url(#a3_blade)"/>
+            <path d="M64 104 L86 84" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>
+            <path d="M54 102 L66 94 L72 106 L60 114 Z" fill="#3a0a18"/>
+            <path d="M28 100 C26 78 40 66 52 70 C66 62 78 76 74 94 C70 108 56 112 44 106 C32 108 28 106 28 100 Z" fill="url(#a3_edge)"/>
+            <path d="M36 92 Q50 108 68 90 Q54 82 36 92 Z" fill="#1a060e" opacity="0.75"/>
+            <path d="M38 88 H50 L48 94 H40 Z" fill="#ffd0e4"/>
+            <path d="M54 86 H66 L64 92 H56 Z" fill="#ffd0e4"/>
+            <path d="M40 90 H48 M56 88 H64" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M46 72 L52 60 L60 74" fill="#ffd0e6"/>
+            <path d="M6 126 L42 116 L46 124 L12 136 Z" fill="#fff7f8"/>
+            <path d="M12 128 L38 120" stroke="#ffd0e4" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M64 98 L96 76 L100 84 L70 106 Z" fill="#fff7f8"/>
+            <path d="M70 100 L94 80" stroke="#ffd0e4" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="shadow"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bottombar">
+    <div class="log-label">战报</div>
+    <div id="log" aria-live="polite"></div>
+  </footer>
+
+  <aside class="shop" id="shop" aria-label="卡牌商店">
+    <div class="shop-head">
+      <span class="shop-title">卡牌商店</span>
+      <span class="credits">信用点 <b id="credits">10</b></span>
+    </div>
+    <div class="shop-row" id="shop-row"></div>
+    <p class="shop-hint" id="shop-hint">拖拽卡牌到左侧战场网格</p>
+  </aside>
+  <div id="templates" hidden></div>
+
+  <div class="overlay" id="overlay" hidden>
+    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="result-title">
+      <h2 id="result-title"></h2>
+      <button type="button" id="rematch">再战</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var CATALOG = {
+    k1: { rarity: "common", rarityName: "普通", cost: 2 },
+    k2: { rarity: "rare", rarityName: "稀有", cost: 3 },
+    k3: { rarity: "epic", rarityName: "史诗", cost: 5 }
+  };
+  var START_CREDITS = 10;
+  var roster = [];
+  var credits = START_CREDITS;
+  var drag = null;
+
+  var logEl = document.getElementById("log");
+  var overlay = document.getElementById("overlay");
+  var resultTitle = document.getElementById("result-title");
+  var countK = document.getElementById("count-k");
+  var countA = document.getElementById("count-a");
+  var stage = document.querySelector(".stage");
+  var running = false;
+  var rafId = 0;
+  var last = 0;
+  var endTimer = 0;
+  var pending = [];
+  var IMPACT_AT = 235;
+  var shop = document.getElementById("shop");
+  var shopRow = document.getElementById("shop-row");
+  var shopHint = document.getElementById("shop-hint");
+  var creditEl = document.getElementById("credits");
+  var startBtn = document.getElementById("start-battle");
+
+  function sideClass(side) { return side === "knight" ? "k" : "a"; }
+
+  function appendLog(node) {
+    logEl.appendChild(node);
+    while (logEl.children.length > 16) logEl.removeChild(logEl.firstChild);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function pushText(text, cls) {
+    var p = document.createElement("p");
+    p.className = cls || "sys";
+    p.textContent = text;
+    appendLog(p);
+  }
+
+  function nameSpan(unit) {
+    var s = document.createElement("span");
+    s.className = sideClass(unit.side);
+    s.textContent = unit.name;
+    return s;
+  }
+
+  function alive(side) {
+    var n = 0;
+    for (var i = 0; i < roster.length; i++) {
+      if (roster[i].side === side && roster[i].hp > 0) n++;
+    }
+    return n;
+  }
+
+  function updateCounts() {
+    var k, a;
+    if (running) {
+      k = alive("knight");
+      a = alive("assassin");
+    } else {
+      k = document.querySelectorAll(".field .unit.knight").length;
+      a = document.querySelectorAll(".field .unit.assassin:not(.dead)").length;
+    }
+    countK.textContent = String(k);
+    countA.textContent = String(a);
+  }
+
+  function readUnit(el) {
+    return {
+      el: el,
+      side: el.classList.contains("knight") ? "knight" : "assassin",
+      name: el.dataset.name,
+      maxHp: +el.dataset.max,
+      hp: +el.dataset.max,
+      atk: +el.dataset.atk,
+      interval: +el.dataset.interval,
+      baseCd: +el.dataset.cd,
+      cd: +el.dataset.cd,
+      fill: el.querySelector(".hp-fill"),
+      ghost: el.querySelector(".hp-ghost")
+    };
+  }
+
+  function hint(text) { shopHint.textContent = text; }
+
+  function renderCredits() { creditEl.textContent = String(credits); }
+
+  function stashKnights() {
+    var side = document.querySelector(".player-side");
+    var holder = document.getElementById("templates");
+    var units = side.querySelectorAll(".unit.knight");
+    Array.prototype.forEach.call(units, function (unit) {
+      var tpl = document.createElement("template");
+      tpl.id = "tpl-" + unit.dataset.id;
+      tpl.content.appendChild(unit);
+      holder.appendChild(tpl);
+    });
+    for (var i = 0; i < 3; i++) {
+      var slot = document.createElement("div");
+      slot.className = "drop-slot";
+      slot.dataset.slot = String(i);
+      slot.innerHTML = '<div class="ground-ring"></div>';
+      side.appendChild(slot);
+    }
+  }
+
+  function onHolo(e) {
+    var card = e.currentTarget;
+    var rect = card.getBoundingClientRect();
+    card.style.setProperty("--px", ((e.clientX - rect.left) / rect.width * 100).toFixed(1));
+    card.style.setProperty("--py", ((e.clientY - rect.top) / rect.height * 100).toFixed(1));
+  }
+
+  function slotUnder(x, y) {
+    var el = document.elementFromPoint(x, y);
+    return el && el.closest ? el.closest(".drop-slot") : null;
+  }
+
+  function onDown(e) {
+    if (e.button !== 0 || drag) return;
+    var card = e.currentTarget;
+    var rect = card.getBoundingClientRect();
+    drag = {
+      card: card,
+      bay: card.parentNode,
+      dx: e.clientX - rect.left,
+      dy: e.clientY - rect.top
+    };
+    card.classList.add("floating");
+    card.style.width = rect.width + "px";
+    card.style.left = rect.left + "px";
+    card.style.top = rect.top + "px";
+    document.body.appendChild(card);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    e.preventDefault();
+  }
+
+  function onMove(e) {
+    if (!drag) return;
+    drag.card.style.left = (e.clientX - drag.dx) + "px";
+    drag.card.style.top = (e.clientY - drag.dy) + "px";
+    var hot = document.querySelectorAll(".drop-slot.hot");
+    for (var i = 0; i < hot.length; i++) hot[i].classList.remove("hot");
+    var slot = slotUnder(e.clientX, e.clientY);
+    if (slot && !slot.querySelector(".unit")) slot.classList.add("hot");
+  }
+
+  function place(card, slot) {
+    var cost = +card.dataset.cost;
+    if (credits < cost) return false;
+    var id = card.dataset.id;
+    var tpl = document.getElementById("tpl-" + id);
+    credits -= cost;
+    renderCredits();
+    card.remove();
+    var unit = tpl.content.querySelector(".unit").cloneNode(true);
+    slot.appendChild(unit);
+    slot.classList.remove("placed");
+    void slot.offsetWidth;
+    slot.classList.add("filled", "placed");
+    unit.classList.add("just-placed");
+    setTimeout(function () { unit.classList.remove("just-placed"); }, 420);
+    updateCounts();
+    hint("已部署 " + unit.dataset.name);
+    return true;
+  }
+
+  function onUp(e) {
+    if (!drag) return;
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
+    var hot = document.querySelectorAll(".drop-slot.hot");
+    for (var i = 0; i < hot.length; i++) hot[i].classList.remove("hot");
+    var card = drag.card;
+    var bay = drag.bay;
+    var slot = slotUnder(e.clientX, e.clientY);
+    drag = null;
+    card.classList.remove("floating");
+    card.style.left = "";
+    card.style.top = "";
+    card.style.width = "";
+    if (slot && !slot.querySelector(".unit") && place(card, slot)) return;
+    bay.appendChild(card);
+    if (slot && !slot.querySelector(".unit") && +card.dataset.cost > credits) {
+      card.classList.remove("nope");
+      void card.offsetWidth;
+      card.classList.add("nope");
+      hint("信用点不足");
+    }
+  }
+
+  function bindCard(card) {
+    card.addEventListener("pointermove", onHolo);
+    card.addEventListener("pointerdown", onDown);
+  }
+
+  function buildShop() {
+    shopRow.replaceChildren();
+    ["k1", "k2", "k3"].forEach(function (id) {
+      var meta = CATALOG[id];
+      var tpl = document.getElementById("tpl-" + id);
+      var bay = document.createElement("div");
+      bay.className = "card-bay";
+      var card = document.createElement("article");
+      card.className = "card " + meta.rarity;
+      card.dataset.id = id;
+      card.dataset.cost = String(meta.cost);
+      var top = document.createElement("div");
+      top.className = "card-top";
+      var rarity = document.createElement("span");
+      rarity.textContent = meta.rarityName;
+      var cost = document.createElement("span");
+      cost.textContent = meta.cost + " 点";
+      top.appendChild(rarity);
+      top.appendChild(cost);
+      var holo = document.createElement("div");
+      holo.className = "holo";
+      var art = document.createElement("div");
+      art.className = "card-art";
+      art.appendChild(tpl.content.querySelector(".sprite").cloneNode(true));
+      var name = document.createElement("div");
+      name.className = "card-name";
+      name.textContent = tpl.content.querySelector(".unit").dataset.name;
+      card.setAttribute("role", "button");
+      card.tabIndex = 0;
+      card.setAttribute("aria-label", name.textContent + "，" + meta.rarityName + "，" + meta.cost + "点");
+      card.appendChild(holo);
+      if (meta.rarity === "epic") {
+        var shimmer = document.createElement("div");
+        shimmer.className = "shimmer";
+        card.appendChild(shimmer);
+      }
+      card.appendChild(top);
+      card.appendChild(art);
+      card.appendChild(name);
+      bay.appendChild(card);
+      shopRow.appendChild(bay);
+      bindCard(card);
+    });
+  }
+
+  function resetActor(el) {
+    el.classList.remove("dead", "hit", "striking", "just-placed");
+    var fill = el.querySelector(".hp-fill");
+    var ghost = el.querySelector(".hp-ghost");
+    fill.style.transition = "none";
+    ghost.style.transition = "none";
+    fill.style.width = "100%";
+    ghost.style.width = "100%";
+    void fill.offsetWidth;
+    fill.style.transition = "";
+    ghost.style.transition = "";
+  }
+
+  function enterPrep() {
+    running = false;
+    clearTimeout(endTimer);
+    clearPending();
+    cancelAnimationFrame(rafId);
+    overlay.hidden = true;
+    stage.classList.add("prep");
+    stage.classList.remove("shaking", "shaking-crit");
+    var slots = document.querySelectorAll(".drop-slot");
+    for (var i = 0; i < slots.length; i++) {
+      var placed = slots[i].querySelector(".unit");
+      if (placed) placed.remove();
+      slots[i].classList.remove("filled", "placed", "hot");
+    }
+    var foes = document.querySelectorAll(".field .unit.assassin");
+    for (var j = 0; j < foes.length; j++) resetActor(foes[j]);
+    var leftovers = document.querySelectorAll(".float, .particle");
+    for (var k = 0; k < leftovers.length; k++) leftovers[k].remove();
+    credits = START_CREDITS;
+    renderCredits();
+    buildShop();
+    shop.hidden = false;
+    startBtn.hidden = false;
+    logEl.replaceChildren();
+    updateCounts();
+    hint("拖拽卡牌到左侧战场网格");
+  }
+
+  function later(fn, ms) {
+    var id = setTimeout(function () {
+      pending = pending.filter(function (x) { return x !== id; });
+      fn();
+    }, ms);
+    pending.push(id);
+  }
+
+  function clearPending() {
+    for (var i = 0; i < pending.length; i++) clearTimeout(pending[i]);
+    pending = [];
+  }
+
+  function pulse(el, cls) {
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+  }
+
+  function setBars(unit, instant) {
+    var pct = (unit.hp / unit.maxHp * 100) + "%";
+    if (instant) {
+      unit.fill.style.transition = "none";
+      unit.ghost.style.transition = "none";
+    }
+    unit.fill.style.width = pct;
+    unit.ghost.style.width = pct;
+    if (instant) {
+      void unit.fill.offsetWidth;
+      unit.fill.style.transition = "";
+      unit.ghost.style.transition = "";
+    }
+  }
+
+  function floatDmg(target, amount, fromSide, crit) {
+    var el = document.createElement("div");
+    el.className = "float " + (crit ? "crit" : (fromSide === "knight" ? "from-k" : "from-a"));
+    el.textContent = String(amount);
+    target.el.appendChild(el);
+    setTimeout(function () { el.remove(); }, crit ? 1000 : 900);
+  }
+
+  function burst(target, crit, fromSide) {
+    var n = 5 + ((Math.random() * 4) | 0);
+    var hue = crit ? "#ffd56a" : (fromSide === "knight" ? "#9af6ff" : "#ff8ea2");
+    for (var i = 0; i < n; i++) {
+      var p = document.createElement("span");
+      p.className = "particle" + (i % 3 === 0 ? " streak" : "");
+      var ang = Math.random() * Math.PI * 2;
+      var dist = 28 + Math.random() * 50;
+      p.style.color = hue;
+      p.style.left = (40 + Math.random() * 20) + "%";
+      p.style.top = (34 + Math.random() * 22) + "%";
+      p.style.setProperty("--dx", (Math.cos(ang) * dist).toFixed(1) + "px");
+      p.style.setProperty("--dy", (Math.sin(ang) * dist * 0.7 - 10).toFixed(1) + "px");
+      target.el.appendChild(p);
+      (function (node) {
+        setTimeout(function () { node.remove(); }, 600);
+      })(p);
+    }
+  }
+
+  function shake(crit) {
+    stage.classList.remove("shaking", "shaking-crit");
+    void stage.offsetWidth;
+    stage.classList.add(crit ? "shaking-crit" : "shaking");
+  }
+
+  function logHit(attacker, target, dmg, killed, crit) {
+    var p = document.createElement("p");
+    p.appendChild(nameSpan(attacker));
+    p.appendChild(document.createTextNode(" 击中 "));
+    p.appendChild(nameSpan(target));
+    p.appendChild(document.createTextNode("，" + (crit ? "暴击造成 " : "造成 ") + dmg + " 点伤害" + (killed ? "，将其击败" : "")));
+    appendLog(p);
+  }
+
+  function finish(knightsWin) {
+    if (!running) return;
+    running = false;
+    cancelAnimationFrame(rafId);
+    pushText(knightsWin ? "机械骑士胜利" : "虚空刺客胜利", knightsWin ? "k" : "a");
+    endTimer = setTimeout(function () {
+      resultTitle.textContent = knightsWin ? "机械骑士胜利" : "虚空刺客胜利";
+      resultTitle.className = knightsWin ? "win-k" : "win-a";
+      overlay.hidden = false;
+      document.getElementById("rematch").focus();
+    }, 640);
+  }
+
+  function livingFoes(attacker) {
+    var foes = [];
+    for (var i = 0; i < roster.length; i++) {
+      if (roster[i].side !== attacker.side && roster[i].hp > 0) foes.push(roster[i]);
+    }
+    return foes;
+  }
+
+  function resolveHit(attacker, target) {
+    if (!running || attacker.hp <= 0) return;
+    if (target.hp <= 0) {
+      var foes = livingFoes(attacker);
+      if (!foes.length) return;
+      target = foes[(Math.random() * foes.length) | 0];
+    }
+    var crit = Math.random() < 0.24;
+    var dmg = attacker.atk + ((Math.random() * 5) | 0);
+    if (crit) dmg = Math.max(dmg + 1, Math.round(dmg * 1.7));
+    target.hp = Math.max(0, target.hp - dmg);
+    setBars(target, false);
+    floatDmg(target, dmg, attacker.side, crit);
+    burst(target, crit, attacker.side);
+    shake(crit);
+    pulse(target.el, "hit");
+    var killed = target.hp <= 0;
+    logHit(attacker, target, dmg, killed, crit);
+    if (killed) {
+      target.el.classList.remove("striking");
+      target.el.classList.add("dead");
+    }
+    updateCounts();
+    if (!alive("knight") || !alive("assassin")) finish(alive("knight") > 0);
+  }
+
+  function attack(attacker) {
+    if (!running || attacker.hp <= 0) return;
+    var foes = livingFoes(attacker);
+    if (!foes.length) return;
+    var target = foes[(Math.random() * foes.length) | 0];
+    pulse(attacker.el, "striking");
+    later(function () { resolveHit(attacker, target); }, IMPACT_AT);
+  }
+
+  function loop(now) {
+    if (!running) return;
+    var dt = Math.min(48, now - last);
+    last = now;
+    for (var i = 0; i < roster.length; i++) {
+      if (!running) break;
+      var u = roster[i];
+      if (u.hp <= 0) continue;
+      u.cd -= dt;
+      if (u.cd <= 0) {
+        u.cd += u.interval;
+        attack(u);
+      }
+    }
+    if (running) rafId = requestAnimationFrame(loop);
+  }
+
+  function start(message) {
+    var fieldUnits = document.querySelectorAll(".field .unit");
+    var hasKnight = false;
+    for (var n = 0; n < fieldUnits.length; n++) {
+      if (fieldUnits[n].classList.contains("knight")) hasKnight = true;
+    }
+    if (!hasKnight) {
+      hint("请先把卡牌拖到左侧网格");
+      return;
+    }
+    roster = Array.prototype.map.call(fieldUnits, readUnit);
+    clearTimeout(endTimer);
+    clearPending();
+    cancelAnimationFrame(rafId);
+    overlay.hidden = true;
+    stage.classList.remove("prep", "shaking", "shaking-crit");
+    shop.hidden = true;
+    startBtn.hidden = true;
+    for (var i = 0; i < roster.length; i++) {
+      var u = roster[i];
+      u.hp = u.maxHp;
+      u.cd = u.baseCd;
+      setBars(u, true);
+      u.el.classList.remove("dead", "hit", "striking", "just-placed");
+    }
+    var leftovers = document.querySelectorAll(".float, .particle");
+    for (var j = 0; j < leftovers.length; j++) leftovers[j].remove();
+    logEl.replaceChildren();
+    pushText(message, "sys");
+    running = true;
+    updateCounts();
+    last = performance.now();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  document.getElementById("rematch").addEventListener("click", function () {
+    enterPrep();
+  });
+  startBtn.addEventListener("click", function () {
+    start("对战开始");
+  });
+
+  stashKnights();
+  enterPrep();
+})();
+</script>
+</body>
+</html>
